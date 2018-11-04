@@ -1,0 +1,74 @@
+---
+title: "Sensitivity, specificity, and precision"
+author: "Rob Walker"
+output: html_document
+---
+
+# Unbalanced targets
+- smoke alarms
+- airport security
+- fraud detection
+- uncontacted indigenous villages
+- cancer diagnosis (e.g., endoscopy to find bowel cancer)
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(reshape2)
+
+x <- matrix(c(20,180,10,1820), byrow = TRUE, 2, 2, dimnames=list(c("test positive","test negative"),c("cancer 1.5%","no cancer 98.5%")))
+x
+
+round(prop.table(x),3)*100 #percents
+
+TP = 20
+FN = 10
+FP = 180
+TN = 1820
+
+(sensitivity = TP/(TP + FN)) # also called Recall
+(specificity = TN/(TN + FP)) 
+(precision = TP/(TP + FP)) # posterior probability of having cancer given a positive test
+
+```
+
+# Find optimal threshold
+- find optimal k threshold in FICO credit scores at which to identify default loans
+- real FICO credit scores and actual good/default data
+
+```{r}
+FICO = c(608,745,443,443,443,546,546,650,617,694,694,650,685,587,590,665,644,593,635,545,466,466,466, 720,646,569,569,619,573,582,582,643,664,664,560,560,600,600,532,614,532,434,468,616,489,680,462,462)
+
+GoodOrDefault = c("Bad","Good","Good","Good","Bad","Good","Good","Bad","Good","Good","Good","Bad","Good","Good","Good","Good","Good","Good","Good","Good","Bad","Good","Bad","Bad","Bad","Good","Bad","Bad","Bad","Good","Good","Bad","Bad","Good","Good","Good","Good","Good","Bad","Good","Bad","Bad","Bad","Bad","Bad","Good","Good","Good")
+
+df = data.frame(GoodOrDefault,FICO)
+ggplot(df, aes(x=FICO, y=as.numeric(GoodOrDefault)-1)) + geom_jitter(height=0.05) +
+  geom_smooth()
+
+table(df$GoodOrDefault)
+
+possible_k = seq(min(df$FICO),max(df$FICO), length.out = 1000)
+sensitivity <- sapply(possible_k, function(k) {
+  predicted_class <- as.numeric(df$FICO < k) # predic default if FICO lower than threshold
+  sum(predicted_class == 1 & df$GoodOrDefault == "Bad") / table(df$GoodOrDefault)[1]
+})
+specificity <- sapply(possible_k, function(k) {
+  predicted_class <- as.numeric(df$FICO > k)
+  sum(predicted_class == 1 & df$GoodOrDefault == "Good") / table(df$GoodOrDefault)[2]
+})
+precision <- sapply(possible_k, function(k) {
+  predicted_class <- as.numeric(df$FICO < k)
+  sum(predicted_class == 1 & df$GoodOrDefault == "Bad")/ sum(predicted_class)
+})
+out = data.frame(FICO=possible_k,specificity,sensitivity,precision)
+out <- melt(out, id.vars = "FICO", variable.name = "Metric", value.name = "Data")
+
+ggplot(out, aes(x = FICO, y = Data, color = Metric)) + geom_line(size=2) +
+  ylab("") + xlab("FICO") + scale_color_manual(name="", labels=c("Specificity","Sensitivity","Precision"), values=c("red","green","blue"))
+
+
+```
+
+# Summary
+- Inherent tradeoff between sensitivity and specificity/precision
+- Optimal threshold is a business decision, or a moral one
