@@ -26,6 +26,7 @@ FN = 10
 FP = 180
 TN = 1820
 
+(accuracy = (TP + TN) / (TP + TN + FP + FN))
 (sensitivity = TP/(TP + FN)) # also called Recall
 (specificity = TN/(TN + FP)) 
 (precision = TP/(TP + FP)) # posterior probability of having cancer given a positive test
@@ -48,6 +49,10 @@ ggplot(df, aes(x=FICO, y=as.numeric(GoodOrDefault)-1)) + geom_jitter(height=0.05
 table(df$GoodOrDefault)
 
 possible_k = seq(min(df$FICO),max(df$FICO), length.out = 1000)
+accuracy <- sapply(possible_k, function(k) {
+  predicted_class <- as.numeric(df$FICO < k)
+  (sum(predicted_class == 1 & df$GoodOrDefault == "Bad") + sum(predicted_class == 0 & df$GoodOrDefault == "Good")) / dim(df)[1]
+})
 sensitivity <- sapply(possible_k, function(k) {
   predicted_class <- as.numeric(df$FICO < k) # predic default if FICO lower than threshold
   sum(predicted_class == 1 & df$GoodOrDefault == "Bad") / table(df$GoodOrDefault)[1]
@@ -60,11 +65,11 @@ precision <- sapply(possible_k, function(k) {
   predicted_class <- as.numeric(df$FICO < k)
   sum(predicted_class == 1 & df$GoodOrDefault == "Bad")/ sum(predicted_class)
 })
-out = data.frame(FICO=possible_k,specificity,sensitivity,precision)
+out = data.frame(FICO=possible_k,specificity,sensitivity,precision,accuracy)
 out <- melt(out, id.vars = "FICO", variable.name = "Metric", value.name = "Data")
 
 ggplot(out, aes(x = FICO, y = Data, color = Metric)) + geom_line(size=2) +
-  ylab("") + xlab("FICO") + scale_color_manual(name="", labels=c("Specificity","Sensitivity","Precision"), values=c("red","green","blue"))
+  ylab("") + xlab("FICO") + scale_color_manual(name="", labels=c("Specificity","Sensitivity","Precision","Accuracy"), values=c("red","green","blue","orange"))
 
 
 ```
